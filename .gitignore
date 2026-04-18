@@ -1,0 +1,143 @@
+# =============================================================
+# Soccer Tournament Portal — .gitignore
+# Covers: Node.js/Vite (frontend) + .NET (backend) + VS + OS
+# =============================================================
+
+# -------------------------------------------------------------
+# Claude Code (AI assistant config — machine-specific)
+# -------------------------------------------------------------
+.claude/
+
+# -------------------------------------------------------------
+# Node.js / npm (frontend)
+# -------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite cache
+frontend/.vite/
+
+# -------------------------------------------------------------
+# Environment files — never commit secrets
+# -------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Keep the template so devs know what vars are needed
+!.env.example
+
+# -------------------------------------------------------------
+# .NET / ASP.NET Core (backend)
+# -------------------------------------------------------------
+# Build output
+backend/**/bin/
+backend/**/obj/
+
+# User-specific VS files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# NuGet packages (restored on build)
+backend/**/packages/
+backend/**/*.nupkg
+backend/**/project.lock.json
+backend/**/project.fragment.lock.json
+backend/**/artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Publish output
+backend/**/publish/
+backend/**/*_i.c
+backend/**/*_p.c
+backend/**/*_i.h
+backend/**/*.ilk
+backend/**/*.meta
+backend/**/*.pdb
+backend/**/*.pgc
+backend/**/*.pgd
+backend/**/*.rsp
+backend/**/*.sbr
+backend/**/*.tlb
+backend/**/*.tli
+backend/**/*.tlh
+backend/**/*.tmp_proj
+backend/**/*.log
+backend/**/*.vspscc
+backend/**/*.vssscc
+backend/**/.builds
+backend/**/*.pidb
+backend/**/*.svclog
+backend/**/*.scc
+
+# .NET runtime
+backend/**/*.VisualState.xml
+backend/**/*.ExternalChecksum.xml
+
+# -------------------------------------------------------------
+# Visual Studio
+# -------------------------------------------------------------
+.vs/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+_ReSharper*/
+*.DotSettings.user
+[Tt]emp/
+[Dd]ebug/
+[Rr]elease/
+[Dd]ebugPublic/
+[Rr]eleasePublic/
+[Ll]og/
+[Ll]ogs/
+
+# -------------------------------------------------------------
+# OS generated
+# -------------------------------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
