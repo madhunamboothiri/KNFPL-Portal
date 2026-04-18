@@ -5,4 +5,5 @@ namespace SoccerTournament.API.Database;
 public interface IDbConnectionFactory
 {
     IDbConnection CreateConnection();
+    Task<IDbConnection> CreateConnectionAsync();
 }

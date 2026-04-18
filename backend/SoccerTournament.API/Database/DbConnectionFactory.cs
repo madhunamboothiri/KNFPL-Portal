@@ -19,4 +19,11 @@ public class DbConnectionFactory : IDbConnectionFactory
         connection.Open();
         return connection;
     }
+
+    public async Task<IDbConnection> CreateConnectionAsync()
+    {
+        var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        return connection;
+    }
 }
