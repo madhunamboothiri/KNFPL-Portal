@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Navbar from '../components/Navbar'
+import AppLayout from '../components/AppLayout'
 import Hero from '../components/Hero'
 import TabNav, { type Tab } from '../components/TabNav'
 import MatchCard from '../components/MatchCard'
@@ -117,8 +117,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Fixtures & Results')
 
   return (
-    <div style={{ background: '#0a0e1a', minHeight: '100vh' }}>
-      <Navbar activeLink="Fixtures" />
+    <AppLayout>
 
       <Hero
         eyebrow="Season 2025 / 2026"
@@ -190,6 +189,6 @@ export default function DashboardPage() {
       </div>
 
       <div style={{ height: 32 }} />
-    </div>
+    </AppLayout>
   )
 }
