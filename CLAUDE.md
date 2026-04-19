@@ -47,7 +47,8 @@ KNFPL-Portal/
 │       │   └── StatsCard.tsx
 │       └── pages/
 │           ├── LoginPage.tsx             # KNFPL branded login
-│           ├── DashboardPage.tsx         # Static seed data — wire to API later
+│           ├── FirstLoginPage.tsx        # Mandatory first-login setup (password + profile)
+│           ├── DashboardPage.tsx         # Live user count + placeholder stat cards
 │           ├── ProfilePage.tsx           # Current user profile + password change
 │           └── UsersPage.tsx             # SuperAdmin user management (CRUD)
 │
@@ -60,7 +61,8 @@ KNFPL-Portal/
         ├── Database/
         │   ├── Migrations/
         │   │   ├── 001_initial.sql
-        │   │   └── 002_users_extended_fields.sql   # phone, address, dob, profile_image
+        │   │   ├── 002_users_extended_fields.sql   # phone, address, dob, profile_image
+        │   │   └── 003_never_logged.sql            # never_logged BOOLEAN flag
         │   ├── MigrationRunner.cs
         │   ├── IDbConnectionFactory.cs
         │   └── DbConnectionFactory.cs
@@ -73,7 +75,8 @@ KNFPL-Portal/
         │   ├── CreateUserRequest.cs
         │   ├── UpdateUserRequest.cs
         │   ├── UpdateProfileRequest.cs
-        │   └── ChangePasswordRequest.cs
+        │   ├── ChangePasswordRequest.cs
+        │   └── CompleteFirstLoginRequest.cs        # first-login setup payload
         ├── Repositories/
         │   ├── IUserRepository.cs / UserRepository.cs
         │   └── IRoleRepository.cs / RoleRepository.cs
@@ -346,7 +349,7 @@ submit button:     compact SaveBtn pattern, right-aligned, with sign-in arrow ic
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/login` | None | Returns JWT + UserDto |
+| POST | `/api/auth/login` | None | Returns JWT + UserDto (includes `neverLogged`) |
 | GET | `/api/users` | Bearer JWT | List all users |
 | POST | `/api/users` | Bearer JWT | Create a user (multipart/form-data) |
 | PUT | `/api/users/{id}` | Bearer JWT | Update a user (multipart/form-data) |
@@ -355,6 +358,7 @@ submit button:     compact SaveBtn pattern, right-aligned, with sign-in arrow ic
 | GET | `/api/profile` | Bearer JWT | Get current user's full profile |
 | PUT | `/api/profile` | Bearer JWT | Update current user's profile (multipart/form-data) |
 | PUT | `/api/profile/password` | Bearer JWT | Change current user's password |
+| PUT | `/api/profile/first-login` | Bearer JWT | Complete first-login setup — sets password, profile fields, and flips `never_logged = true` (multipart/form-data) |
 
 ### Login request / response
 ```json
@@ -379,9 +383,14 @@ submit button:     compact SaveBtn pattern, right-aligned, with sign-in arrow ic
   "address": "string | null",
   "dateOfBirth": "YYYY-MM-DD | null",
   "profileImage": "base64string | null",
+  "neverLogged": false,
   "createdAt": "ISO datetime"
 }
 ```
+
+> `neverLogged` is `false` when an admin-created user has not yet completed first-login setup.
+> It becomes `true` after the user completes `PUT /api/profile/first-login`.
+> The login response always includes this field so the frontend can gate routing.
 
 ---
 
@@ -403,6 +412,7 @@ users (
   address       TEXT,
   date_of_birth DATE,
   profile_image BYTEA,
+  never_logged  BOOLEAN NOT NULL DEFAULT TRUE,   -- FALSE = first login pending
   created_at    TIMESTAMPTZ DEFAULT NOW()
 )
 ```
@@ -436,8 +446,10 @@ Default admin: `admin@soccer.local` / `Admin@123`
 
 - **`api.ts` is the only file that calls `fetch`.** All HTTP calls go through `api.auth.*`, `api.users.*`, `api.roles.*`, `api.profile.*`.
 - **JWT** is read/written only via `localStorage.getItem/setItem('token')`.
-- **User object in localStorage** (`key: 'user'`) stores `{ id, name, email, role, profileImage }`. Always include `profileImage` when updating this object. After any profile save, dispatch `window.dispatchEvent(new Event('userUpdated'))` so the Navbar avatar updates reactively.
-- **`PrivateRoute` in `App.tsx`** redirects to `/login` if no token is found.
+- **User object in localStorage** (`key: 'user'`) stores `{ id, name, email, role, profileImage, neverLogged }`. Always include both fields when updating this object. After any profile save, dispatch `window.dispatchEvent(new Event('userUpdated'))` so the Navbar avatar updates reactively.
+- **`PrivateRoute` in `App.tsx`** redirects to `/login` if no token is found. If the stored user has `neverLogged === false`, it redirects to `/first-login` before allowing access to any protected page.
+- **First-login flow** — when admin creates a user, `neverLogged` is set to `false`. On the user's first login the frontend detects this and forces them to `/first-login` where they must set a new password and fill in phone, address, and date of birth (all mandatory). On success `neverLogged` becomes `true` and they land on the dashboard.
+- **User object in localStorage** (`key: 'user'`) stores `{ id, name, email, role, profileImage, neverLogged }`. Always include both `profileImage` and `neverLogged` when updating this object.
 - **Component props are typed** via interfaces in `src/types/index.ts`. Add new types there, not inline.
 - **Hover effects** on interactive cards use `onMouseEnter/onMouseLeave` with inline style mutation.
 - **Error messages shown to users** must always be plain English — never raw API response bodies or HTTP status strings.
@@ -619,4 +631,4 @@ RBAC enforcement: add `[Authorize(Roles = "SuperAdmin")]` on controller actions 
 - **Activity log** — user action history (login, profile update, password change, CRUD events) stored in `activity_logs` DB table
 - **RBAC enforcement** — `[Authorize(Roles = "...")]` attributes on controller actions
 - **Tournament / match / team / player management** pages
-- **Dashboard** wired to live API data (currently static seed arrays)
+- **Dashboard** — Total Users card is live; Total Tournaments, Active Tournaments, Total Players are placeholders

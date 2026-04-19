@@ -82,7 +82,7 @@ export default function LoginPage() {
       const res = await api.auth.login(email, password)
       localStorage.setItem('token', res.token)
       localStorage.setItem('user', JSON.stringify(res.user))
-      navigate('/dashboard')
+      navigate(res.user.neverLogged === false ? '/first-login' : '/dashboard')
     } catch {
       setError('Invalid email or password.')
     } finally {

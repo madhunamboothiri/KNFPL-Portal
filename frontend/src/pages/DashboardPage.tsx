@@ -1,12 +1,23 @@
+import { useEffect, useState } from 'react'
 import AppLayout from '../components/AppLayout'
-
-const ANALYTICS = [
-  { num: '—', label: 'Total Tournaments' },
-  { num: '—', label: 'Active Tournaments' },
-  { num: '—', label: 'Total Players' },
-]
+import { api } from '../services/api'
 
 export default function DashboardPage() {
+  const [userCount, setUserCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    api.users.list()
+      .then(users => setUserCount(users.length))
+      .catch(() => setUserCount(null))
+  }, [])
+
+  const ANALYTICS = [
+    { num: userCount !== null ? String(userCount) : '—', label: 'Total Users' },
+    { num: '—', label: 'Total Tournaments' },
+    { num: '—', label: 'Active Tournaments' },
+    { num: '—', label: 'Total Players' },
+  ]
+
   return (
     <AppLayout>
       <div style={{ padding: '32px 24px' }}>

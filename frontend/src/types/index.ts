@@ -57,6 +57,7 @@ export interface User {
   address?: string
   dateOfBirth?: string
   profileImage?: string
+  neverLogged?: boolean
   createdAt: string
 }
 

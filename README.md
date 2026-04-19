@@ -35,7 +35,8 @@ KNFPL-Portal/
 │       │   └── LoadingOverlay.tsx        # Section loading spinner
 │       ├── pages/
 │       │   ├── LoginPage.tsx             # KNFPL branded login
-│       │   ├── DashboardPage.tsx
+│       │   ├── FirstLoginPage.tsx        # Mandatory first-login setup
+│       │   ├── DashboardPage.tsx         # Live user count + stat cards
 │       │   ├── ProfilePage.tsx           # Profile editing + password change
 │       │   └── UsersPage.tsx             # User management (SuperAdmin)
 │       ├── services/api.ts               # Typed fetch wrapper
@@ -48,7 +49,7 @@ KNFPL-Portal/
         ├── Repositories/                 # UserRepository, RoleRepository (Dapper)
         ├── Models/                       # User, UserDto, requests...
         ├── Database/
-        │   └── Migrations/               # Numbered SQL migration files
+        │   └── Migrations/               # 001_initial, 002_extended_fields, 003_never_logged
         └── Program.cs
 ```
 
@@ -140,7 +141,7 @@ Set `VITE_API_URL=http://localhost:5000` in `frontend/.env`.
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/auth/login` | None | Login — returns JWT + user info |
+| `POST` | `/api/auth/login` | None | Login — returns JWT + user info (includes `neverLogged`) |
 | `GET` | `/api/users` | Bearer JWT | List all users |
 | `POST` | `/api/users` | Bearer JWT | Create a user |
 | `PUT` | `/api/users/{id}` | Bearer JWT | Update a user |
@@ -149,6 +150,7 @@ Set `VITE_API_URL=http://localhost:5000` in `frontend/.env`.
 | `GET` | `/api/profile` | Bearer JWT | Get current user's full profile |
 | `PUT` | `/api/profile` | Bearer JWT | Update current user's profile |
 | `PUT` | `/api/profile/password` | Bearer JWT | Change current user's password |
+| `PUT` | `/api/profile/first-login` | Bearer JWT | Complete first-login setup (password + profile fields) |
 
 All user/profile endpoints accept `multipart/form-data` to support profile image upload.
 
@@ -162,9 +164,14 @@ roles  (id UUID PK, name VARCHAR UNIQUE)
 users  (
   id UUID PK, name, email UNIQUE, password_hash,
   role_id FK → roles, phone_number, address,
-  date_of_birth DATE, profile_image BYTEA, created_at
+  date_of_birth DATE, profile_image BYTEA,
+  never_logged BOOLEAN NOT NULL DEFAULT TRUE,  -- FALSE = first login pending
+  created_at TIMESTAMPTZ
 )
 ```
+
+> `never_logged = false` when an admin creates a user — first-login setup is required.
+> Flips to `true` after the user completes the setup wizard.
 
 Schema changes are managed via numbered SQL files in `backend/SoccerTournament.API/Database/Migrations/`. **Never use EF migrations.**
 
@@ -189,12 +196,32 @@ Full design system documentation — colors, typography, component rules, and ge
 
 ---
 
+## First-Login Flow
+
+When a SuperAdmin creates a user the account is marked with `never_logged = false`.
+On the user's **first login** they are automatically redirected to the **Complete Your Profile** page where they must:
+
+1. Set a new password (min 6 characters + confirmation)
+2. Enter phone number, home address, and date of birth (all mandatory)
+3. Optionally upload a profile photo
+
+No other page is accessible until setup is complete. On submission the backend updates all fields and flips `never_logged = true`, after which the user lands on the dashboard normally.
+
+---
+
+## Dashboard
+
+- **Total Users** — live count from the API
+- Total Tournaments, Active Tournaments, Total Players — placeholders (not yet wired)
+
+---
+
 ## Planned Features
 
 - Activity log (user action history including login events)
 - Tournament / match / team / player management
 - RBAC enforcement per role
-- Live dashboard data (currently static)
+- Live tournament / player stats on the dashboard
 
 ---
 

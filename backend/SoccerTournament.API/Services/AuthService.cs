@@ -35,6 +35,7 @@ public class AuthService : IAuthService
                 Name = user.Name,
                 Email = user.Email,
                 Role = user.RoleName,
+                NeverLogged = user.NeverLogged,
                 CreatedAt = user.CreatedAt,
             },
         };

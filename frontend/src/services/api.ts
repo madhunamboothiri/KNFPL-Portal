@@ -83,5 +83,23 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ currentPassword, newPassword }),
       }),
+    completeFirstLogin: (data: {
+      newPassword: string
+      name: string
+      email: string
+      phoneNumber: string
+      address: string
+      dateOfBirth: string
+    }, image?: File) => {
+      const fd = new FormData()
+      fd.append('newPassword', data.newPassword)
+      fd.append('name', data.name)
+      fd.append('email', data.email)
+      fd.append('phoneNumber', data.phoneNumber)
+      fd.append('address', data.address)
+      fd.append('dateOfBirth', data.dateOfBirth)
+      if (image) fd.append('profileImage', image)
+      return request<User>('/api/profile/first-login', { method: 'PUT', body: fd })
+    },
   },
 }

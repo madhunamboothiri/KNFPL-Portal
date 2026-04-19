@@ -40,6 +40,25 @@ public class ProfileController : ControllerBase
         return Ok(user);
     }
 
+    [HttpPut("first-login")]
+    public async Task<IActionResult> CompleteFirstLogin([FromForm] CompleteFirstLoginRequest request, IFormFile? profileImage)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+            return BadRequest(new { error = "New password must be at least 6 characters." });
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest(new { error = "Name and email are required." });
+        if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+            return BadRequest(new { error = "Phone number is required." });
+        if (string.IsNullOrWhiteSpace(request.Address))
+            return BadRequest(new { error = "Address is required." });
+        if (string.IsNullOrWhiteSpace(request.DateOfBirth))
+            return BadRequest(new { error = "Date of birth is required." });
+
+        var imageBytes = await ReadImageAsync(profileImage);
+        var user = await _users.CompleteFirstLoginAsync(CurrentUserId, request, imageBytes);
+        return user is null ? NotFound() : Ok(user);
+    }
+
     [HttpPut("password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {

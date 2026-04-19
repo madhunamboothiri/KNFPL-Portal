@@ -11,4 +11,5 @@ public interface IUserService
     Task<bool> DeleteAsync(Guid id);
     Task<UserDto?> UpdateProfileAsync(Guid id, UpdateProfileRequest request, byte[]? profileImage);
     Task<bool> ChangePasswordAsync(Guid id, string currentPassword, string newPassword);
+    Task<UserDto?> CompleteFirstLoginAsync(Guid id, CompleteFirstLoginRequest request, byte[]? profileImage);
 }

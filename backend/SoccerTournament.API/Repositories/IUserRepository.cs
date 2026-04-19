@@ -12,4 +12,5 @@ public interface IUserRepository
     Task<bool> UpdateAsync(User user);
     Task<bool> UpdatePasswordAsync(Guid id, string passwordHash);
     Task<bool> DeleteAsync(Guid id);
+    Task<bool> SetNeverLoggedAsync(Guid id, bool value);
 }

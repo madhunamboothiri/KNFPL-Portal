@@ -61,7 +61,7 @@ public class UserRepository : IUserRepository
 
         user.Id = Guid.NewGuid();
         user.CreatedAt = DateTime.UtcNow;
-        user.NeverLogged = true;
+        user.NeverLogged = false;
 
         using var conn = _db.CreateConnection();
         return await conn.ExecuteScalarAsync<Guid>(sql, user);
@@ -99,6 +99,14 @@ public class UserRepository : IUserRepository
         const string sql = "DELETE FROM users WHERE id = @Id";
         using var conn = _db.CreateConnection();
         var rows = await conn.ExecuteAsync(sql, new { Id = id });
+        return rows > 0;
+    }
+
+    public async Task<bool> SetNeverLoggedAsync(Guid id, bool value)
+    {
+        const string sql = "UPDATE users SET never_logged = @Value WHERE id = @Id";
+        using var conn = _db.CreateConnection();
+        var rows = await conn.ExecuteAsync(sql, new { Value = value, Id = id });
         return rows > 0;
     }
 }

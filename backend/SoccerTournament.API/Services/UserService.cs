@@ -105,6 +105,31 @@ public class UserService : IUserService
         return ToDto(existing);
     }
 
+    public async Task<UserDto?> CompleteFirstLoginAsync(Guid id, CompleteFirstLoginRequest request, byte[]? profileImage)
+    {
+        var existing = await _users.GetByIdAsync(id);
+        if (existing is null) return null;
+
+        await CheckEmailUnique(request.Email, excludeId: id);
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+            await CheckPhoneUnique(request.PhoneNumber, excludeId: id);
+
+        existing.Name = request.Name;
+        existing.Email = request.Email;
+        existing.PhoneNumber = request.PhoneNumber;
+        existing.Address = request.Address;
+        existing.DateOfBirth = ParseDate(request.DateOfBirth);
+        if (profileImage is not null)
+            existing.ProfileImage = profileImage;
+
+        await _users.UpdateAsync(existing);
+        await _users.UpdatePasswordAsync(id, BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12));
+        await _users.SetNeverLoggedAsync(id, true);
+
+        existing.NeverLogged = true;
+        return ToDto(existing);
+    }
+
     public async Task<bool> ChangePasswordAsync(Guid id, string currentPassword, string newPassword)
     {
         var user = await _users.GetByIdAsync(id);
@@ -146,6 +171,7 @@ public class UserService : IUserService
         ProfileImage = u.ProfileImage is { Length: > 0 }
             ? Convert.ToBase64String(u.ProfileImage)
             : null,
+        NeverLogged = u.NeverLogged,
         CreatedAt = u.CreatedAt,
     };
 }
