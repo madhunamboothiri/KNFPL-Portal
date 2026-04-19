@@ -1,9 +1,11 @@
 import { useLocation, useNavigate } from 'react-router-dom'
+import type { User } from '../types'
 
-const NAV_ITEMS = [
+const ALL_NAV_ITEMS = [
   {
     label: 'Dashboard',
     path: '/dashboard',
+    roles: null,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <rect x="1" y="1" width="6" height="6" rx="1" />
@@ -14,58 +16,13 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Fixtures',
-    path: '/fixtures',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <rect x="1" y="3" width="14" height="11" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M1 6h14" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M5 1v4M11 1v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Standings',
-    path: '/standings',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <rect x="1" y="9" width="3" height="6" rx="0.5" />
-        <rect x="6" y="5" width="3" height="10" rx="0.5" />
-        <rect x="11" y="2" width="3" height="13" rx="0.5" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Teams',
-    path: '/teams',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <circle cx="6" cy="5" r="2.5" />
-        <path d="M1 14c0-2.76 2.24-5 5-5s5 2.24 5 5" />
-        <circle cx="12" cy="5" r="2" />
-        <path d="M12 10c1.66 0 3 1.34 3 3" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Players',
-    path: '/players',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <circle cx="8" cy="5" r="3" />
-        <path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6" />
-      </svg>
-    ),
-  },
-  {
     label: 'Users',
     path: '/users',
+    roles: ['SuperAdmin'],
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <circle cx="8" cy="5" r="3" />
-        <path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6" />
-        <circle cx="13" cy="13" r="3" fill="#0a0e1a" />
-        <path d="M13 11v4M11 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" />
       </svg>
     ),
   },
@@ -96,6 +53,14 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
   const navigate = useNavigate()
   const w = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED
 
+  const currentUser: User | null = (() => {
+    try { return JSON.parse(localStorage.getItem('user') ?? 'null') } catch { return null }
+  })()
+
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter(
+    (item) => item.roles === null || (currentUser && item.roles.includes(currentUser.role)),
+  )
+
   return (
     <aside
       style={{
@@ -117,77 +82,106 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
       <div
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          padding: collapsed ? '14px 0' : '14px 16px 14px 20px',
+          justifyContent: 'center',
+          padding: collapsed ? '12px 0' : '16px 12px 14px',
           borderBottom: '1px solid #1c1e2a',
-          gap: 8,
           flexShrink: 0,
+          position: 'relative',
         }}
       >
-        {!collapsed && (
-          <div style={{ overflow: 'hidden' }}>
-            <div
+        {collapsed ? (
+          /* Collapsed: logo left, arrow right */
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '0 8px' }}>
+            <img
+              src="/KNFPLLogo.png"
+              alt="KNFPL"
+              style={{ height: 32, width: 32, objectFit: 'contain', flexShrink: 0 }}
+            />
+            <button
+              onClick={onToggle}
               style={{
-                fontSize: 18,
-                fontWeight: 900,
-                color: '#F5C518',
-                letterSpacing: 3,
-                textTransform: 'uppercase',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.1,
+                background: 'none',
+                border: 'none',
+                color: '#444',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 2,
+                flexShrink: 0,
               }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#F5C518')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#444')}
+              title="Expand sidebar"
             >
-              KNFPL
-            </div>
-            <div
-              style={{
-                fontSize: 8,
-                fontWeight: 700,
-                color: '#333',
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                marginTop: 2,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Portal
-            </div>
+              <ChevronIcon direction="right" />
+            </button>
           </div>
+        ) : (
+          /* Expanded: logo + text centred, arrow pinned to right */
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              <img
+                src="/KNFPLLogo.png"
+                alt="KNFPL"
+                style={{ height: 52, width: 'auto', objectFit: 'contain' }}
+              />
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 900,
+                  color: '#F5C518',
+                  letterSpacing: 3,
+                  textTransform: 'uppercase',
+                  lineHeight: 1.1,
+                  fontFamily: "'Arial Black', Arial, sans-serif",
+                  marginTop: 6,
+                }}
+              >
+                KNFPL
+              </div>
+              <div
+                style={{
+                  fontSize: 7,
+                  fontWeight: 700,
+                  color: '#555',
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  marginTop: 3,
+                  lineHeight: 1.4,
+                  fontFamily: "'Arial Black', Arial, sans-serif",
+                  textAlign: 'center',
+                }}
+              >
+                Kerala Namboothiries<br />Premier League
+              </div>
+            </div>
+            <button
+              onClick={onToggle}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                right: 8,
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#444',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 4,
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#F5C518')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#444')}
+              title="Collapse sidebar"
+            >
+              <ChevronIcon direction="left" />
+            </button>
+          </>
         )}
-
-        {collapsed && (
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 900,
-              color: '#F5C518',
-              letterSpacing: 1,
-            }}
-          >
-            K
-          </span>
-        )}
-
-        <button
-          onClick={onToggle}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#444',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 4,
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#F5C518')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#444')}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <ChevronIcon direction={collapsed ? 'right' : 'left'} />
-        </button>
       </div>
 
       {/* Nav items */}

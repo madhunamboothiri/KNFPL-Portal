@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { api } from '../services/api'
 import type { User } from '../types'
 
 const ROUTE_META: Record<string, { title: string; crumbs: { label: string; path?: string }[] }> = {
@@ -9,6 +10,7 @@ const ROUTE_META: Record<string, { title: string; crumbs: { label: string; path?
   '/teams':     { title: 'Teams',      crumbs: [{ label: 'Home', path: '/dashboard' }, { label: 'Teams' }] },
   '/players':   { title: 'Players',    crumbs: [{ label: 'Home', path: '/dashboard' }, { label: 'Players' }] },
   '/users':     { title: 'Users',      crumbs: [{ label: 'Home', path: '/dashboard' }, { label: 'Users' }] },
+  '/profile':   { title: 'Profile',    crumbs: [{ label: 'Home', path: '/dashboard' }, { label: 'Profile' }] },
 }
 
 function BellIcon() {
@@ -38,11 +40,40 @@ export default function Navbar({ sidebarWidth }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [userOpen, setUserOpen] = useState(false)
 
   const meta = ROUTE_META[location.pathname] ?? { title: 'Portal', crumbs: [{ label: 'Home' }] }
 
-  const stored = localStorage.getItem('user')
-  const user: User | null = stored ? (JSON.parse(stored) as User) : null
+  const [user, setUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('user')
+    return stored ? (JSON.parse(stored) as User) : null
+  })
+
+  useEffect(() => {
+    // fetch fresh profile (includes profileImage from DB)
+    api.profile.get()
+      .then((fresh) => {
+        setUser((prev) => prev ? { ...prev, profileImage: fresh.profileImage } : prev)
+        const stored = localStorage.getItem('user')
+        if (stored) {
+          localStorage.setItem('user', JSON.stringify({ ...JSON.parse(stored), profileImage: fresh.profileImage ?? null }))
+        }
+      })
+      .catch(() => { /* silently ignore — user stays from localStorage */ })
+  }, [])
+
+  useEffect(() => {
+    function sync() {
+      const stored = localStorage.getItem('user')
+      setUser(stored ? (JSON.parse(stored) as User) : null)
+    }
+    window.addEventListener('userUpdated', sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener('userUpdated', sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
 
   const logout = () => {
     localStorage.removeItem('token')
@@ -244,93 +275,184 @@ export default function Navbar({ sidebarWidth }: Props) {
         {/* Divider */}
         <div style={{ width: 1, height: 28, background: '#1c1e2a', margin: '0 16px' }} />
 
-        {/* User info */}
+        {/* User dropdown trigger */}
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 16 }}>
-            {/* Avatar */}
-            <div
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setUserOpen((v) => !v)}
               style={{
-                width: 32,
-                height: 32,
-                background: 'linear-gradient(135deg, #1c1e2a 0%, #111520 100%)',
-                border: '1px solid #F5C518',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 12,
-                fontWeight: 900,
-                color: '#F5C518',
-                flexShrink: 0,
+                gap: 10,
+                padding: '4px 8px 4px 4px',
               }}
             >
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            {/* Name + role */}
-            <div>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 900,
-                  color: '#e8e8e8',
-                  letterSpacing: 0.5,
-                  lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user.name}
+              {/* Avatar */}
+              {user.profileImage ? (
+                <img
+                  src={`data:image/*;base64,${user.profileImage}`}
+                  alt={user.name}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1px solid #F5C518',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #1c1e2a 0%, #111520 100%)',
+                    border: '1px solid #F5C518',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 12,
+                    fontWeight: 900,
+                    color: '#F5C518',
+                    flexShrink: 0,
+                  }}
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {/* Name + role */}
+              <div style={{ textAlign: 'left' }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 900,
+                    color: '#e8e8e8',
+                    letterSpacing: 0.5,
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    fontFamily: "'Arial Black', Arial, sans-serif",
+                  }}
+                >
+                  {user.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: '#F5C518',
+                    letterSpacing: 1.5,
+                    textTransform: 'uppercase',
+                    opacity: 0.7,
+                    marginTop: 1,
+                    fontFamily: "'Arial Black', Arial, sans-serif",
+                  }}
+                >
+                  {user.role}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: 9,
-                  color: '#F5C518',
-                  letterSpacing: 1.5,
-                  textTransform: 'uppercase',
-                  opacity: 0.7,
-                  marginTop: 1,
-                }}
+              {/* Chevron */}
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                fill="none"
+                stroke="#555"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                style={{ transform: userOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}
               >
-                {user.role}
-              </div>
-            </div>
+                <polyline points="2,3 5,7 8,3" />
+              </svg>
+            </button>
+
+            {/* Dropdown */}
+            {userOpen && (
+              <>
+                {/* Backdrop to close on outside click */}
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 290 }}
+                  onClick={() => setUserOpen(false)}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 44,
+                    right: 0,
+                    width: 190,
+                    background: '#111520',
+                    border: '1px solid #1c1e2a',
+                    borderTop: '2px solid #F5C518',
+                    zIndex: 300,
+                  }}
+                >
+                  <DropdownItem
+                    icon={
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                        <circle cx="8" cy="5" r="3" />
+                        <path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" />
+                      </svg>
+                    }
+                    label="Profile"
+                    onClick={() => { setUserOpen(false); navigate('/profile') }}
+                  />
+                  <div style={{ height: 1, background: '#1c1e2a', margin: '4px 0' }} />
+                  <DropdownItem
+                    icon={<SignOutIcon />}
+                    label="Sign Out"
+                    danger
+                    onClick={() => { setUserOpen(false); logout() }}
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 28, background: '#1c1e2a', marginRight: 16 }} />
-
-        {/* Sign Out */}
-        <button
-          onClick={logout}
-          style={{
-            background: 'none',
-            border: '1px solid #1c1e2a',
-            color: '#555',
-            fontSize: 10,
-            fontWeight: 700,
-            padding: '0 14px',
-            height: 34,
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            fontFamily: "'Arial Black', Arial, sans-serif",
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            transition: 'color 0.15s, border-color 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.color = '#F5C518'
-            ;(e.currentTarget as HTMLButtonElement).style.borderColor = '#F5C518'
-          }}
-          onMouseLeave={(e) => {
-            ;(e.currentTarget as HTMLButtonElement).style.color = '#555'
-            ;(e.currentTarget as HTMLButtonElement).style.borderColor = '#1c1e2a'
-          }}
-        >
-          <SignOutIcon />
-          Sign Out
-        </button>
       </div>
     </nav>
+  )
+}
+
+function DropdownItem({
+  icon,
+  label,
+  danger = false,
+  onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  danger?: boolean
+  onClick: () => void
+}) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width: '100%',
+        background: hov ? (danger ? 'rgba(192,57,43,0.08)' : '#0a0e1a') : 'none',
+        border: 'none',
+        color: hov ? (danger ? '#c0392b' : '#fff') : danger ? '#555' : '#aaa',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 16px',
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+        cursor: 'pointer',
+        fontFamily: "'Arial Black', Arial, sans-serif",
+        transition: 'color 0.15s, background 0.15s',
+        textAlign: 'left',
+      }}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }

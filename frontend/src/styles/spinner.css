@@ -1,0 +1,12 @@
+.knfpl-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(245, 197, 24, 0.15);
+  border-top-color: #F5C518;
+  animation: knfpl-spin 0.7s linear infinite;
+}
+
+@keyframes knfpl-spin {
+  to { transform: rotate(360deg); }
+}

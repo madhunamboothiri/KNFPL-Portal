@@ -53,7 +53,20 @@ export interface User {
   name: string
   email: string
   role: string
+  phoneNumber?: string
+  address?: string
+  dateOfBirth?: string
+  profileImage?: string
   createdAt: string
+}
+
+export interface UpdateUserRequest {
+  name: string
+  email: string
+  roleId: string
+  phoneNumber?: string
+  address?: string
+  dateOfBirth?: string
 }
 
 export interface LoginRequest {
