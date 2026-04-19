@@ -13,4 +13,7 @@ public interface IUserRepository
     Task<bool> UpdatePasswordAsync(Guid id, string passwordHash);
     Task<bool> DeleteAsync(Guid id);
     Task<bool> SetNeverLoggedAsync(Guid id, bool value);
+    Task<IEnumerable<UserTournamentRow>> GetAllUserTournamentsAsync();
+    Task<IEnumerable<UserTournamentRow>> GetUserTournamentsAsync(Guid userId);
+    Task SetUserTournamentsAsync(Guid userId, IEnumerable<Guid> tournamentIds);
 }

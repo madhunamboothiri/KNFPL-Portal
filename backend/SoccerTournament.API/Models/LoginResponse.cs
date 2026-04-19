@@ -18,4 +18,11 @@ public class UserDto
     public string? ProfileImage { get; set; }
     public bool NeverLogged { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<TournamentBrief>? AssignedTournaments { get; set; }
+}
+
+public class TournamentBrief
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }

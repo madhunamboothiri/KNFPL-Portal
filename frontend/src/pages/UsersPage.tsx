@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'r
 import AppLayout from '../components/AppLayout'
 import DobMaskInput from '../components/DobMaskInput'
 import { api } from '../services/api'
-import type { User, Role, CreateUserRequest, UpdateUserRequest } from '../types'
+import type { User, Role, Tournament, CreateUserRequest, UpdateUserRequest } from '../types'
 
 const FONT = "'Arial Black', Arial, sans-serif"
 
@@ -190,6 +190,7 @@ interface UserFormData {
   phoneNumber: string
   address: string
   dateOfBirth: string
+  tournamentIds: string[]
 }
 
 const EMPTY_FORM: UserFormData = {
@@ -200,6 +201,7 @@ const EMPTY_FORM: UserFormData = {
   phoneNumber: '',
   address: '',
   dateOfBirth: '',
+  tournamentIds: [],
 }
 
 export default function UsersPage() {
@@ -209,6 +211,7 @@ export default function UsersPage() {
 
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -234,9 +237,10 @@ export default function UsersPage() {
     setLoading(true)
     setError('')
     try {
-      const [u, r] = await Promise.all([api.users.list(), api.roles.list()])
+      const [u, r, t] = await Promise.all([api.users.list(), api.roles.list(), api.tournaments.list()])
       setUsers(u.filter((x) => x.id !== currentUserId))
       setRoles(r)
+      setTournaments(t)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data')
     } finally {
@@ -246,7 +250,7 @@ export default function UsersPage() {
 
   function openCreate() {
     setEditingUser(null)
-    setFormData({ ...EMPTY_FORM, password: 'Password@123' })
+    setFormData({ ...EMPTY_FORM, password: 'Password@123', tournamentIds: [] })
     setImageFile(undefined)
     setImagePreview(null)
     setFormError('')
@@ -264,6 +268,7 @@ export default function UsersPage() {
       phoneNumber: user.phoneNumber ?? '',
       address: user.address ?? '',
       dateOfBirth: user.dateOfBirth ?? '',
+      tournamentIds: user.assignedTournaments?.map(t => t.id) ?? [],
     })
     setImageFile(undefined)
     setImagePreview(user.profileImage ? `data:image/jpeg;base64,${user.profileImage}` : null)
@@ -296,6 +301,7 @@ export default function UsersPage() {
     setFormLoading(true)
 
     try {
+      const isTournamentAdmin = roles.find(r => r.id === formData.roleId)?.name === 'TournamentAdmin'
       if (editingUser) {
         const req: UpdateUserRequest = {
           name: formData.name,
@@ -304,6 +310,7 @@ export default function UsersPage() {
           phoneNumber: formData.phoneNumber || undefined,
           address: formData.address || undefined,
           dateOfBirth: formData.dateOfBirth || undefined,
+          tournamentIds: isTournamentAdmin ? formData.tournamentIds : [],
         }
         const updated = await api.users.update(editingUser.id, req, imageFile)
         setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))
@@ -316,6 +323,7 @@ export default function UsersPage() {
           phoneNumber: formData.phoneNumber || undefined,
           address: formData.address || undefined,
           dateOfBirth: formData.dateOfBirth || undefined,
+          tournamentIds: isTournamentAdmin ? formData.tournamentIds : [],
         }
         const created = await api.users.create(req, imageFile)
         setUsers((prev) => [created, ...prev])
@@ -350,7 +358,7 @@ export default function UsersPage() {
     }
   }
 
-  function field(key: keyof UserFormData, value: string) {
+  function field(key: keyof UserFormData, value: string | string[]) {
     setFormData((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -655,8 +663,16 @@ export default function UsersPage() {
                       className={formErrors.address ? 'error-border' : ''}
                   />
                 </FormField>
+                {roles.find(r => r.id === formData.roleId)?.name === 'TournamentAdmin' && tournaments.length > 0 && (
+                  <TournamentAssignField
+                    tournaments={tournaments}
+                    selected={formData.tournamentIds}
+                    onChange={ids => setFormData(prev => ({ ...prev, tournamentIds: ids }))}
+                  />
+                )}
               </>
             ) : (
+              <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
                 <FormField label="Name *" error={formErrors.name}>
                   <input
@@ -702,6 +718,14 @@ export default function UsersPage() {
                   </select>
                 </FormField>
               </div>
+              {roles.find(r => r.id === formData.roleId)?.name === 'TournamentAdmin' && tournaments.length > 0 && (
+                <TournamentAssignField
+                  tournaments={tournaments}
+                  selected={formData.tournamentIds}
+                  onChange={ids => setFormData(prev => ({ ...prev, tournamentIds: ids }))}
+                />
+              )}
+              </>
             )}
 
             {formError && (
@@ -861,6 +885,11 @@ function UserRow({
         >
           {user.role}
         </span>
+        {user.role === 'TournamentAdmin' && user.assignedTournaments && user.assignedTournaments.length > 0 && (
+          <div style={{ fontSize: 9, color: '#555', fontFamily: "'Arial Black', Arial, sans-serif", marginTop: 3, letterSpacing: 1 }}>
+            {user.assignedTournaments.map(t => t.name).join(', ')}
+          </div>
+        )}
       </td>
       <td style={{ ...TD, color: '#888' }}>
         {user.dateOfBirth
@@ -876,6 +905,40 @@ function UserRow({
         <ActionBtn onClick={onDelete} label="Delete" danger />
       </td>
     </tr>
+  )
+}
+
+function TournamentAssignField({ tournaments, selected, onChange }: {
+  tournaments: Tournament[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  function toggle(id: string) {
+    onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id])
+  }
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#555', marginBottom: 6, fontFamily: "'Arial Black', Arial, sans-serif" }}>
+        Assign Tournaments
+      </label>
+      <div style={{ border: '1px solid #1c1e2a', background: '#0a0e1a', maxHeight: 140, overflowY: 'auto', padding: '4px 0' }}>
+        {tournaments.map(t => (
+          <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', cursor: 'pointer', userSelect: 'none' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLLabelElement).style.background = '#111520')}
+            onMouseLeave={e => ((e.currentTarget as HTMLLabelElement).style.background = 'transparent')}>
+            <input type="checkbox" checked={selected.includes(t.id)} onChange={() => toggle(t.id)}
+              style={{ accentColor: '#F5C518', width: 13, height: 13, flexShrink: 0, cursor: 'pointer' }} />
+            <span style={{ fontSize: 12, color: '#fff', fontFamily: "'Arial Black', Arial, sans-serif", flex: 1 }}>{t.name}</span>
+            <span style={{ fontSize: 9, color: '#555', letterSpacing: 1, fontFamily: "'Arial Black', Arial, sans-serif" }}>{t.type}</span>
+          </label>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <div style={{ fontSize: 9, color: '#F5C518', letterSpacing: 1, fontFamily: "'Arial Black', Arial, sans-serif", marginTop: 4 }}>
+          {selected.length} tournament{selected.length > 1 ? 's' : ''} selected
+        </div>
+      )}
+    </div>
   )
 }
 

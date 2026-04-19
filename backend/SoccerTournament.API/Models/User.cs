@@ -14,4 +14,9 @@ public class User
     public bool NeverLogged { get; set; }
     public byte[]? ProfileImage { get; set; }
     public DateTime CreatedAt { get; set; }
+    public Guid? CreatedById { get; set; }
+    public string? CreatedByName { get; set; }
+    public DateTime? ModifiedAt { get; set; }
+    public Guid? ModifiedById { get; set; }
+    public string? ModifiedByName { get; set; }
 }

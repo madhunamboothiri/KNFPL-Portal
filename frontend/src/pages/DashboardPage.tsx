@@ -4,17 +4,31 @@ import { api } from '../services/api'
 
 export default function DashboardPage() {
   const [userCount, setUserCount] = useState<number | null>(null)
+  const [tournamentCount, setTournamentCount] = useState<number | null>(null)
+  const [activeTournamentCount, setActiveTournamentCount] = useState<number | null>(null)
 
   useEffect(() => {
     api.users.list()
       .then(users => setUserCount(users.length))
       .catch(() => setUserCount(null))
+
+    api.tournaments.list()
+      .then(tournaments => {
+        setTournamentCount(tournaments.length)
+        setActiveTournamentCount(tournaments.filter(t => t.isActive).length)
+      })
+      .catch(() => {
+        setTournamentCount(null)
+        setActiveTournamentCount(null)
+      })
   }, [])
 
+  const fmt = (n: number | null) => n !== null ? String(n) : '—'
+
   const ANALYTICS = [
-    { num: userCount !== null ? String(userCount) : '—', label: 'Total Users' },
-    { num: '—', label: 'Total Tournaments' },
-    { num: '—', label: 'Active Tournaments' },
+    { num: fmt(userCount), label: 'Total Users' },
+    { num: fmt(tournamentCount), label: 'Total Tournaments' },
+    { num: fmt(activeTournamentCount), label: 'Active Tournaments' },
     { num: '—', label: 'Total Players' },
   ]
 

@@ -109,4 +109,39 @@ public class UserRepository : IUserRepository
         var rows = await conn.ExecuteAsync(sql, new { Value = value, Id = id });
         return rows > 0;
     }
+
+    public async Task<IEnumerable<UserTournamentRow>> GetAllUserTournamentsAsync()
+    {
+        const string sql = """
+            SELECT ta.user_id AS UserId, ta.tournament_id AS TournamentId, t.name AS TournamentName
+            FROM tournament_admins ta
+            JOIN tournaments t ON t.id = ta.tournament_id
+            """;
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync<UserTournamentRow>(sql);
+    }
+
+    public async Task<IEnumerable<UserTournamentRow>> GetUserTournamentsAsync(Guid userId)
+    {
+        const string sql = """
+            SELECT ta.user_id AS UserId, ta.tournament_id AS TournamentId, t.name AS TournamentName
+            FROM tournament_admins ta
+            JOIN tournaments t ON t.id = ta.tournament_id
+            WHERE ta.user_id = @UserId
+            """;
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync<UserTournamentRow>(sql, new { UserId = userId });
+    }
+
+    public async Task SetUserTournamentsAsync(Guid userId, IEnumerable<Guid> tournamentIds)
+    {
+        using var conn = _db.CreateConnection();
+        await conn.ExecuteAsync("DELETE FROM tournament_admins WHERE user_id = @UserId", new { UserId = userId });
+        foreach (var tid in tournamentIds)
+        {
+            await conn.ExecuteAsync(
+                "INSERT INTO tournament_admins (tournament_id, user_id) VALUES (@TournamentId, @UserId) ON CONFLICT DO NOTHING",
+                new { TournamentId = tid, UserId = userId });
+        }
+    }
 }

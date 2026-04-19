@@ -75,8 +75,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<ITournamentRepository, TournamentRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITournamentService, TournamentService>();
 builder.Services.AddTransient<MigrationRunner>();
 builder.Services.AddTransient<DatabaseSeeder>();
 

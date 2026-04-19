@@ -1,4 +1,4 @@
-import type { LoginResponse, User, Role, CreateUserRequest, UpdateUserRequest } from '../types'
+import type { LoginResponse, User, Role, Tournament, CreateUserRequest, UpdateUserRequest, CreateTournamentRequest, UpdateTournamentRequest } from '../types'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -32,6 +32,7 @@ function buildUserFormData(
   if (data.phoneNumber) fd.append('phoneNumber', data.phoneNumber)
   if (data.address) fd.append('address', data.address)
   if (data.dateOfBirth) fd.append('dateOfBirth', data.dateOfBirth)
+  if (data.tournamentIds) data.tournamentIds.forEach(id => fd.append('tournamentIds', id))
   if (image) fd.append('profileImage', image)
   return fd
 }
@@ -64,6 +65,30 @@ export const api = {
 
   roles: {
     list: () => request<Role[]>('/api/roles'),
+  },
+
+  tournaments: {
+    list: () => request<Tournament[]>('/api/tournaments'),
+    getById: (id: string) => request<Tournament>(`/api/tournaments/${id}`),
+    create: (data: CreateTournamentRequest, logo?: File) => {
+      const fd = new FormData()
+      fd.append('name', data.name)
+      fd.append('type', data.type)
+      fd.append('numberOfTeams', String(data.numberOfTeams))
+      fd.append('isActive', String(data.isActive))
+      if (logo) fd.append('logo', logo)
+      return request<Tournament>('/api/tournaments', { method: 'POST', body: fd })
+    },
+    update: (id: string, data: UpdateTournamentRequest, logo?: File) => {
+      const fd = new FormData()
+      fd.append('name', data.name)
+      fd.append('type', data.type)
+      fd.append('numberOfTeams', String(data.numberOfTeams))
+      fd.append('isActive', String(data.isActive))
+      if (logo) fd.append('logo', logo)
+      return request<Tournament>(`/api/tournaments/${id}`, { method: 'PUT', body: fd })
+    },
+    delete: (id: string) => request<void>(`/api/tournaments/${id}`, { method: 'DELETE' }),
   },
 
   profile: {

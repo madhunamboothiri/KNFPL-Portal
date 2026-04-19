@@ -48,6 +48,11 @@ export interface StatCard {
   label: string
 }
 
+export interface TournamentBrief {
+  id: string
+  name: string
+}
+
 export interface User {
   id: string
   name: string
@@ -59,15 +64,34 @@ export interface User {
   profileImage?: string
   neverLogged?: boolean
   createdAt: string
+  assignedTournaments?: TournamentBrief[]
 }
 
-export interface UpdateUserRequest {
+export interface Tournament {
+  id: string
   name: string
-  email: string
-  roleId: string
-  phoneNumber?: string
-  address?: string
-  dateOfBirth?: string
+  type: '5s' | '7s' | '9s' | '11s'
+  logo?: string
+  numberOfTeams: number
+  isActive: boolean
+  createdAt: string
+  createdByName?: string
+  modifiedAt?: string
+  modifiedByName?: string
+}
+
+export interface CreateTournamentRequest {
+  name: string
+  type: string
+  numberOfTeams: number
+  isActive: boolean
+}
+
+export interface UpdateTournamentRequest {
+  name: string
+  type: string
+  numberOfTeams: number
+  isActive: boolean
 }
 
 export interface LoginRequest {
@@ -93,4 +117,15 @@ export interface CreateUserRequest {
   phoneNumber?: string
   address?: string
   dateOfBirth?: string
+  tournamentIds?: string[]
+}
+
+export interface UpdateUserRequest {
+  name: string
+  email: string
+  roleId: string
+  phoneNumber?: string
+  address?: string
+  dateOfBirth?: string
+  tournamentIds?: string[]
 }

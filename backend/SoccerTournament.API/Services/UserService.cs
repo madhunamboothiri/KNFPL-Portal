@@ -17,13 +17,20 @@ public class UserService : IUserService
     public async Task<IEnumerable<UserDto>> GetAllAsync()
     {
         var users = await _users.GetAllAsync();
-        return users.Select(ToDto);
+        var allAssignments = await _users.GetAllUserTournamentsAsync();
+        var map = allAssignments
+            .GroupBy(r => r.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(r => new TournamentBrief { Id = r.TournamentId, Name = r.TournamentName }).ToList());
+        return users.Select(u => ToDto(u, map.GetValueOrDefault(u.Id)));
     }
 
     public async Task<UserDto?> GetByIdAsync(Guid id)
     {
         var user = await _users.GetByIdAsync(id);
-        return user is null ? null : ToDto(user);
+        if (user is null) return null;
+        var assignments = await _users.GetUserTournamentsAsync(id);
+        var briefs = assignments.Select(r => new TournamentBrief { Id = r.TournamentId, Name = r.TournamentName }).ToList();
+        return ToDto(user, briefs.Count > 0 ? briefs : null);
     }
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, byte[]? profileImage)
@@ -50,6 +57,14 @@ public class UserService : IUserService
 
         var id = await _users.CreateAsync(user);
         user.Id = id;
+
+        if (role.Name == "TournamentAdmin" && request.TournamentIds?.Count > 0)
+        {
+            var tids = request.TournamentIds
+                .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+                .Where(g => g.HasValue).Select(g => g!.Value);
+            await _users.SetUserTournamentsAsync(id, tids);
+        }
 
         return ToDto(user);
     }
@@ -78,6 +93,20 @@ public class UserService : IUserService
             existing.ProfileImage = profileImage;
 
         await _users.UpdateAsync(existing);
+
+        if (role.Name == "TournamentAdmin")
+        {
+            var tids = (request.TournamentIds ?? [])
+                .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+                .Where(g => g.HasValue).Select(g => g!.Value);
+            await _users.SetUserTournamentsAsync(id, tids);
+        }
+        else
+        {
+            // Clear any stale tournament assignments if role changed away from TournamentAdmin
+            await _users.SetUserTournamentsAsync(id, []);
+        }
+
         return ToDto(existing);
     }
 
@@ -159,7 +188,7 @@ public class UserService : IUserService
     private static DateTime? ParseDate(string? value) =>
         DateTime.TryParse(value, out var d) ? d : null;
 
-    private static UserDto ToDto(User u) => new()
+    private static UserDto ToDto(User u, List<TournamentBrief>? tournaments = null) => new()
     {
         Id = u.Id,
         Name = u.Name,
@@ -173,5 +202,6 @@ public class UserService : IUserService
             : null,
         NeverLogged = u.NeverLogged,
         CreatedAt = u.CreatedAt,
+        AssignedTournaments = tournaments,
     };
 }

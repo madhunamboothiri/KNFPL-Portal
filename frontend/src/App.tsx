@@ -4,6 +4,7 @@ import DashboardPage from './pages/DashboardPage'
 import UsersPage from './pages/UsersPage'
 import ProfilePage from './pages/ProfilePage'
 import FirstLoginPage from './pages/FirstLoginPage'
+import TournamentsPage from './pages/TournamentsPage'
 import type { User } from './types'
 
 function getStoredUser(): User | null {
@@ -47,6 +48,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <ProfilePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/tournaments"
+          element={
+            <PrivateRoute>
+              <TournamentsPage />
             </PrivateRoute>
           }
         />

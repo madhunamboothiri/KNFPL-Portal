@@ -36,20 +36,22 @@ KNFPL-Portal/
 │       ├── pages/
 │       │   ├── LoginPage.tsx             # KNFPL branded login
 │       │   ├── FirstLoginPage.tsx        # Mandatory first-login setup
-│       │   ├── DashboardPage.tsx         # Live user count + stat cards
+│       │   ├── DashboardPage.tsx         # Live counts: users, tournaments, active tournaments
 │       │   ├── ProfilePage.tsx           # Profile editing + password change
-│       │   └── UsersPage.tsx             # User management (SuperAdmin)
-│       ├── services/api.ts               # Typed fetch wrapper
+│       │   ├── UsersPage.tsx             # User management + tournament assignment (SuperAdmin)
+│       │   └── TournamentsPage.tsx       # Tournament management (SuperAdmin CRUD / TournamentAdmin read)
+│       ├── services/api.ts               # Typed fetch wrapper (auth/users/roles/profile/tournaments)
 │       └── types/index.ts                # Shared TypeScript interfaces
 └── backend/
     ├── schema.sql
     └── SoccerTournament.API/
-        ├── Controllers/                  # Auth, Users, Profile, Roles
-        ├── Services/                     # AuthService, UserService
-        ├── Repositories/                 # UserRepository, RoleRepository (Dapper)
-        ├── Models/                       # User, UserDto, requests...
+        ├── Controllers/                  # Auth, Users, Profile, Roles, Tournaments
+        ├── Services/                     # AuthService, UserService, TournamentService
+        ├── Repositories/                 # UserRepository, RoleRepository, TournamentRepository (Dapper)
+        ├── Models/                       # User, UserDto, Tournament, TournamentDto, requests...
         ├── Database/
-        │   └── Migrations/               # 001_initial, 002_extended_fields, 003_never_logged
+        │   └── Migrations/               # 001_initial, 002_extended_fields, 003_never_logged,
+        │                                 # 004_tournaments, 005_users_audit_fields
         └── Program.cs
 ```
 
@@ -151,6 +153,10 @@ Set `VITE_API_URL=http://localhost:5000` in `frontend/.env`.
 | `PUT` | `/api/profile` | Bearer JWT | Update current user's profile |
 | `PUT` | `/api/profile/password` | Bearer JWT | Change current user's password |
 | `PUT` | `/api/profile/first-login` | Bearer JWT | Complete first-login setup (password + profile fields) |
+| `GET` | `/api/tournaments` | Bearer JWT | List tournaments (SuperAdmin: all; TournamentAdmin: assigned only) |
+| `POST` | `/api/tournaments` | Bearer JWT (SuperAdmin) | Create a tournament |
+| `PUT` | `/api/tournaments/{id}` | Bearer JWT (SuperAdmin) | Update a tournament |
+| `DELETE` | `/api/tournaments/{id}` | Bearer JWT (SuperAdmin) | Delete a tournament |
 
 All user/profile endpoints accept `multipart/form-data` to support profile image upload.
 
@@ -166,8 +172,19 @@ users  (
   role_id FK → roles, phone_number, address,
   date_of_birth DATE, profile_image BYTEA,
   never_logged BOOLEAN NOT NULL DEFAULT TRUE,  -- FALSE = first login pending
-  created_at TIMESTAMPTZ
+  created_at TIMESTAMPTZ,
+  created_by UUID FK → users, modified_at TIMESTAMPTZ, modified_by UUID FK → users
 )
+
+tournaments  (
+  id UUID PK, name VARCHAR NOT NULL,
+  type VARCHAR(5) CHECK (type IN ('5s','7s','9s','11s')),
+  logo BYTEA, number_of_teams INT, is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ, created_by UUID FK → users,
+  modified_at TIMESTAMPTZ, modified_by UUID FK → users
+)
+
+tournament_admins  (tournament_id FK → tournaments, user_id FK → users, PK composite)
 ```
 
 > `never_logged = false` when an admin creates a user — first-login setup is required.
@@ -211,17 +228,36 @@ No other page is accessible until setup is complete. On submission the backend u
 
 ## Dashboard
 
-- **Total Users** — live count from the API
-- Total Tournaments, Active Tournaments, Total Players — placeholders (not yet wired)
+Live stat cards wired to the API:
+
+- **Total Users** — live count from `/api/users`
+- **Total Tournaments** — live count from `/api/tournaments`
+- **Active Tournaments** — filtered count (`isActive = true`)
+- Total Players — placeholder (not yet wired)
+
+---
+
+## Tournament Management
+
+Accessible via the **Tournaments** nav item.
+
+| Role | Capabilities |
+|---|---|
+| SuperAdmin | Create, edit, delete tournaments; assign/remove TournamentAdmin users |
+| TournamentAdmin | View only the tournaments they are assigned to |
+
+Each tournament has: name, type (5s / 7s / 9s / 11s), logo, number of teams, active status, and full audit trail (created by/on, modified by/on).
+
+When a user is assigned the TournamentAdmin role in Users management, one or more tournaments can be selected and linked via the `tournament_admins` junction table.
 
 ---
 
 ## Planned Features
 
 - Activity log (user action history including login events)
-- Tournament / match / team / player management
+- Match / team / player management pages
 - RBAC enforcement per role
-- Live tournament / player stats on the dashboard
+- Live player stats on the dashboard
 
 ---
 

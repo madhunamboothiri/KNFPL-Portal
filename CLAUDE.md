@@ -48,9 +48,10 @@ KNFPL-Portal/
 │       └── pages/
 │           ├── LoginPage.tsx             # KNFPL branded login
 │           ├── FirstLoginPage.tsx        # Mandatory first-login setup (password + profile)
-│           ├── DashboardPage.tsx         # Live user count + placeholder stat cards
+│           ├── DashboardPage.tsx         # Live counts: users, tournaments, active tournaments
 │           ├── ProfilePage.tsx           # Current user profile + password change
-│           └── UsersPage.tsx             # SuperAdmin user management (CRUD)
+│           ├── UsersPage.tsx             # SuperAdmin user management (CRUD + tournament assignment)
+│           └── TournamentsPage.tsx       # Tournament management (SuperAdmin CRUD, TournamentAdmin read)
 │
 └── backend/
     ├── schema.sql                        # Raw SQL: tables + seed data (run once)
@@ -62,7 +63,9 @@ KNFPL-Portal/
         │   ├── Migrations/
         │   │   ├── 001_initial.sql
         │   │   ├── 002_users_extended_fields.sql   # phone, address, dob, profile_image
-        │   │   └── 003_never_logged.sql            # never_logged BOOLEAN flag
+        │   │   ├── 003_never_logged.sql            # never_logged BOOLEAN flag
+        │   │   ├── 004_tournaments.sql             # tournaments + tournament_admins tables
+        │   │   └── 005_users_audit_fields.sql      # created_by, modified_at, modified_by on users
         │   ├── MigrationRunner.cs
         │   ├── IDbConnectionFactory.cs
         │   └── DbConnectionFactory.cs
@@ -70,24 +73,31 @@ KNFPL-Portal/
         │   ├── User.cs
         │   ├── UserDto.cs
         │   ├── Role.cs
+        │   ├── Tournament.cs
+        │   ├── TournamentDto.cs
         │   ├── LoginRequest.cs
-        │   ├── LoginResponse.cs
+        │   ├── LoginResponse.cs                    # includes TournamentBrief + UserDto.AssignedTournaments
         │   ├── CreateUserRequest.cs
         │   ├── UpdateUserRequest.cs
+        │   ├── CreateTournamentRequest.cs
+        │   ├── UpdateTournamentRequest.cs
         │   ├── UpdateProfileRequest.cs
         │   ├── ChangePasswordRequest.cs
         │   └── CompleteFirstLoginRequest.cs        # first-login setup payload
         ├── Repositories/
-        │   ├── IUserRepository.cs / UserRepository.cs
-        │   └── IRoleRepository.cs / RoleRepository.cs
+        │   ├── IUserRepository.cs / UserRepository.cs   # includes tournament-assignment helpers
+        │   ├── IRoleRepository.cs / RoleRepository.cs
+        │   └── ITournamentRepository.cs / TournamentRepository.cs
         ├── Services/
         │   ├── IAuthService.cs / AuthService.cs
-        │   └── IUserService.cs / UserService.cs
+        │   ├── IUserService.cs / UserService.cs
+        │   └── ITournamentService.cs / TournamentService.cs
         └── Controllers/
             ├── AuthController.cs         # POST /api/auth/login (no [Authorize])
             ├── UsersController.cs        # CRUD /api/users      ([Authorize])
             ├── ProfileController.cs      # GET/PUT /api/profile ([Authorize])
-            └── RolesController.cs        # GET /api/roles       ([Authorize])
+            ├── RolesController.cs        # GET /api/roles       ([Authorize])
+            └── TournamentsController.cs  # CRUD /api/tournaments ([Authorize])
 ```
 
 ---
@@ -359,6 +369,10 @@ submit button:     compact SaveBtn pattern, right-aligned, with sign-in arrow ic
 | PUT | `/api/profile` | Bearer JWT | Update current user's profile (multipart/form-data) |
 | PUT | `/api/profile/password` | Bearer JWT | Change current user's password |
 | PUT | `/api/profile/first-login` | Bearer JWT | Complete first-login setup — sets password, profile fields, and flips `never_logged = true` (multipart/form-data) |
+| GET | `/api/tournaments` | Bearer JWT | List tournaments (SuperAdmin sees all; TournamentAdmin sees only assigned) |
+| POST | `/api/tournaments` | Bearer JWT (SuperAdmin) | Create a tournament (multipart/form-data) |
+| PUT | `/api/tournaments/{id}` | Bearer JWT (SuperAdmin) | Update a tournament (multipart/form-data) |
+| DELETE | `/api/tournaments/{id}` | Bearer JWT (SuperAdmin) | Delete a tournament |
 
 ### Login request / response
 ```json
@@ -384,13 +398,30 @@ submit button:     compact SaveBtn pattern, right-aligned, with sign-in arrow ic
   "dateOfBirth": "YYYY-MM-DD | null",
   "profileImage": "base64string | null",
   "neverLogged": false,
-  "createdAt": "ISO datetime"
+  "createdAt": "ISO datetime",
+  "assignedTournaments": [{ "id": "uuid", "name": "string" }]  // TournamentAdmin only, else []
 }
 ```
 
 > `neverLogged` is `false` when an admin-created user has not yet completed first-login setup.
 > It becomes `true` after the user completes `PUT /api/profile/first-login`.
 > The login response always includes this field so the frontend can gate routing.
+
+### TournamentDto shape
+```json
+{
+  "id": "uuid",
+  "name": "string",
+  "type": "5s | 7s | 9s | 11s",
+  "logo": "base64string | null",
+  "numberOfTeams": 0,
+  "isActive": true,
+  "createdAt": "ISO datetime",
+  "createdByName": "string | null",
+  "modifiedAt": "ISO datetime | null",
+  "modifiedByName": "string | null"
+}
+```
 
 ---
 
@@ -413,7 +444,29 @@ users (
   date_of_birth DATE,
   profile_image BYTEA,
   never_logged  BOOLEAN NOT NULL DEFAULT TRUE,   -- FALSE = first login pending
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  created_by    UUID REFERENCES users(id) ON DELETE SET NULL,
+  modified_at   TIMESTAMPTZ,
+  modified_by   UUID REFERENCES users(id) ON DELETE SET NULL
+)
+
+tournaments (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            VARCHAR NOT NULL,
+  type            VARCHAR(5) NOT NULL CHECK (type IN ('5s','7s','9s','11s')),
+  logo            BYTEA,
+  number_of_teams INT NOT NULL DEFAULT 0,
+  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
+  modified_at     TIMESTAMPTZ,
+  modified_by     UUID REFERENCES users(id) ON DELETE SET NULL
+)
+
+tournament_admins (
+  tournament_id   UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (tournament_id, user_id)
 )
 ```
 
@@ -444,7 +497,7 @@ Default admin: `admin@soccer.local` / `Admin@123`
 
 ## Frontend Conventions
 
-- **`api.ts` is the only file that calls `fetch`.** All HTTP calls go through `api.auth.*`, `api.users.*`, `api.roles.*`, `api.profile.*`.
+- **`api.ts` is the only file that calls `fetch`.** All HTTP calls go through `api.auth.*`, `api.users.*`, `api.roles.*`, `api.profile.*`, `api.tournaments.*`.
 - **JWT** is read/written only via `localStorage.getItem/setItem('token')`.
 - **User object in localStorage** (`key: 'user'`) stores `{ id, name, email, role, profileImage, neverLogged }`. Always include both fields when updating this object. After any profile save, dispatch `window.dispatchEvent(new Event('userUpdated'))` so the Navbar avatar updates reactively.
 - **`PrivateRoute` in `App.tsx`** redirects to `/login` if no token is found. If the stored user has `neverLogged === false`, it redirects to `/first-login` before allowing access to any protected page.
@@ -630,5 +683,6 @@ RBAC enforcement: add `[Authorize(Roles = "SuperAdmin")]` on controller actions 
 
 - **Activity log** — user action history (login, profile update, password change, CRUD events) stored in `activity_logs` DB table
 - **RBAC enforcement** — `[Authorize(Roles = "...")]` attributes on controller actions
-- **Tournament / match / team / player management** pages
-- **Dashboard** — Total Users card is live; Total Tournaments, Active Tournaments, Total Players are placeholders
+- **Match / team / player management** pages
+- **Dashboard** — Total Users, Total Tournaments, Active Tournaments are live; Total Players is a placeholder
+- **Audit field backend plumbing** — `created_by`/`modified_by` columns exist on users table (migration 005) but UserRepository/UserService actor-ID wiring is not yet complete
