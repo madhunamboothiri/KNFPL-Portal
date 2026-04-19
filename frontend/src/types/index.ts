@@ -89,4 +89,7 @@ export interface CreateUserRequest {
   email: string
   password: string
   roleId: string
+  phoneNumber?: string
+  address?: string
+  dateOfBirth?: string
 }

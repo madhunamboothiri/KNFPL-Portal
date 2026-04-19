@@ -264,6 +264,21 @@ margin-top:      4px
 line-height:     1.4
 ```
 
+To standardize inline errors across components we use two utility classes in `src/index.css`:
+
+```
+.field-error    // styles the inline error text (9px, #c0392b, spacing)
+.error-border   // applies red border to inputs/selects/textareas
+```
+
+Usage (React):
+```tsx
+<input style={INPUT} className={errors.email ? 'error-border' : ''} />
+{errors.email && <div className="field-error">{errors.email}</div>}
+```
+
+This replaces ad-hoc inline `borderColor` and duplicated error styles so all controls share a consistent error appearance.
+
 #### Loading Overlay (LoadingOverlay component)
 ```
 position:    absolute, inset 0

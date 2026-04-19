@@ -32,14 +32,19 @@ const LABEL_STYLE: React.CSSProperties = {
 function FormField({
   label,
   children,
+  error,
 }: {
   label: string
   children: React.ReactNode
+  error?: string
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={LABEL_STYLE}>{label}</label>
       {children}
+      {error && (
+        <div className="field-error">{error}</div>
+      )}
     </div>
   )
 }
@@ -213,6 +218,7 @@ export default function UsersPage() {
   const [imageFile, setImageFile] = useState<File | undefined>()
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [formError, setFormError] = useState('')
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [formLoading, setFormLoading] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
@@ -240,10 +246,11 @@ export default function UsersPage() {
 
   function openCreate() {
     setEditingUser(null)
-    setFormData(EMPTY_FORM)
+    setFormData({ ...EMPTY_FORM, password: 'Password@123' })
     setImageFile(undefined)
     setImagePreview(null)
     setFormError('')
+    setFormErrors({})
     setShowModal(true)
   }
 
@@ -261,6 +268,7 @@ export default function UsersPage() {
     setImageFile(undefined)
     setImagePreview(user.profileImage ? `data:image/jpeg;base64,${user.profileImage}` : null)
     setFormError('')
+    setFormErrors({})
     setShowModal(true)
   }
 
@@ -276,6 +284,15 @@ export default function UsersPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError('')
+    setFormErrors({})
+
+    // Client-side validation to display inline errors (matching ProfilePage)
+    const errs: Record<string, string> = {}
+    if (!formData.name.trim()) errs.name = 'Full name is required.'
+    if (!formData.email.trim()) errs.email = 'Email is required.'
+    if (!formData.roleId) errs.roleId = 'Role is required.'
+    if (Object.keys(errs).length) { setFormErrors(errs); return }
+
     setFormLoading(true)
 
     try {
@@ -305,7 +322,15 @@ export default function UsersPage() {
       }
       setShowModal(false)
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Operation failed.')
+      const msg = e instanceof Error ? e.message : 'Operation failed.'
+      const lower = msg.toLowerCase()
+      const fieldErrs: Record<string, string> = {}
+      if (lower.includes('email')) fieldErrs.email = msg
+      else if (lower.includes('phone')) fieldErrs.phone = msg
+      else if (lower.includes('name')) fieldErrs.name = msg
+      else if (lower.includes('password')) fieldErrs.password = msg
+      else setFormError(msg)
+      setFormErrors(fieldErrs)
     } finally {
       setFormLoading(false)
     }
@@ -494,143 +519,190 @@ export default function UsersPage() {
           title={editingUser ? 'Edit User' : 'Add User'}
           onClose={() => setShowModal(false)}
         >
-          <form onSubmit={handleSubmit}>
-            {/* Avatar preview + upload */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-              {imagePreview ? (
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: '1px solid #2a2810',
-                    flexShrink: 0,
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    background: '#1c1e2a',
-                    border: '1px solid #2a2810',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 22,
-                    color: '#444',
-                    flexShrink: 0,
-                  }}
-                >
-                  ◎
-                </div>
-              )}
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleImageChange}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    background: 'none',
-                    border: '1px solid #1c1e2a',
-                    color: '#aaa',
-                    padding: '6px 14px',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: 2,
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    fontFamily: FONT,
-                  }}
-                >
-                  {imagePreview ? 'Change Photo' : 'Upload Photo'}
-                </button>
-                <div style={{ fontSize: 9, color: '#444', marginTop: 4, letterSpacing: 1, fontFamily: FONT }}>
-                  JPG, PNG — stored in database
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Avatar preview + upload (only for editing existing users) */}
+            {editingUser && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '1px solid #2a2810',
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: '50%',
+                      background: '#1c1e2a',
+                      border: '1px solid #2a2810',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 22,
+                      color: '#444',
+                      flexShrink: 0,
+                    }}
+                  >
+                    ◎
+                  </div>
+                )}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleImageChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #1c1e2a',
+                      color: '#aaa',
+                      padding: '6px 14px',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: 2,
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      fontFamily: FONT,
+                    }}
+                  >
+                    {imagePreview ? 'Change Photo' : 'Upload Photo'}
+                  </button>
+                  <div style={{ fontSize: 9, color: '#444', marginTop: 4, letterSpacing: 1, fontFamily: FONT }}>
+                    JPG, PNG — stored in database
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <FormField label="Name *">
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => field('name', e.target.value)}
-                  required
-                  style={INPUT_STYLE}
-                />
-              </FormField>
-              <FormField label="Email *">
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => field('email', e.target.value)}
-                  required
-                  style={INPUT_STYLE}
-                />
-              </FormField>
-              {!editingUser && (
-                <FormField label="Password *">
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => field('password', e.target.value)}
-                    required
-                    style={INPUT_STYLE}
+            {editingUser ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                  <FormField label="Name *" error={formErrors.name}>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => field('name', e.target.value)}
+                      required
+                        style={INPUT_STYLE}
+                        className={formErrors.name ? 'error-border' : ''}
+                    />
+                  </FormField>
+                  <FormField label="Email *" error={formErrors.email}>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => field('email', e.target.value)}
+                      required
+                        style={INPUT_STYLE}
+                        className={formErrors.email ? 'error-border' : ''}
+                    />
+                  </FormField>
+                  <FormField label="Role *" error={formErrors.roleId}>
+                    <select
+                      value={formData.roleId}
+                      onChange={(e) => field('roleId', e.target.value)}
+                      required
+                        style={{ ...INPUT_STYLE, cursor: 'pointer' }}
+                        className={formErrors.roleId ? 'error-border' : ''}
+                    >
+                      <option value="">Select role…</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label="Phone Number" error={formErrors.phone}>
+                    <input
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={(e) => field('phoneNumber', e.target.value)}
+                        style={INPUT_STYLE}
+                        className={formErrors.phone ? 'error-border' : ''}
+                    />
+                  </FormField>
+                  <FormField label="Date of Birth" error={formErrors.dateOfBirth}>
+                    <DobMaskInput
+                      value={formData.dateOfBirth}
+                      onChange={(v) => field('dateOfBirth', v)}
+                        style={INPUT_STYLE}
+                        className={formErrors.dateOfBirth ? 'error-border' : ''}
+                    />
+                  </FormField>
+                </div>
+
+                <FormField label="Address" error={formErrors.address}>
+                  <textarea
+                    value={formData.address}
+                    onChange={(e) => field('address', e.target.value)}
+                    rows={2}
+                      style={{ ...INPUT_STYLE, resize: 'vertical' }}
+                      className={formErrors.address ? 'error-border' : ''}
                   />
                 </FormField>
-              )}
-              <FormField label="Role *">
-                <select
-                  value={formData.roleId}
-                  onChange={(e) => field('roleId', e.target.value)}
-                  required
-                  style={{ ...INPUT_STYLE, cursor: 'pointer' }}
-                >
-                  <option value="">Select role…</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="Phone Number">
-                <input
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) => field('phoneNumber', e.target.value)}
-                  style={INPUT_STYLE}
-                />
-              </FormField>
-              <FormField label="Date of Birth">
-                <DobMaskInput
-                  value={formData.dateOfBirth}
-                  onChange={(v) => field('dateOfBirth', v)}
-                  style={INPUT_STYLE}
-                />
-              </FormField>
-            </div>
-
-            <FormField label="Address">
-              <textarea
-                value={formData.address}
-                onChange={(e) => field('address', e.target.value)}
-                rows={2}
-                style={{ ...INPUT_STYLE, resize: 'vertical' }}
-              />
-            </FormField>
+              </>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+                <FormField label="Name *" error={formErrors.name}>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => field('name', e.target.value)}
+                    required
+                    style={{ ...INPUT_STYLE, borderColor: formErrors.name ? '#c0392b' : '#1c1e2a' }}
+                  />
+                </FormField>
+                <FormField label="Email *" error={formErrors.email}>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => field('email', e.target.value)}
+                    required
+                    style={{ ...INPUT_STYLE, borderColor: formErrors.email ? '#c0392b' : '#1c1e2a' }}
+                  />
+                </FormField>
+                <FormField label="Password" error={formErrors.password}>
+                  <input
+                    type="text"
+                    value={formData.password}
+                    readOnly
+                    style={{ ...INPUT_STYLE, opacity: 0.9, borderColor: formErrors.password ? '#c0392b' : '#1c1e2a' }}
+                  />
+                </FormField>
+                <FormField label="Role *" error={formErrors.roleId}>
+                  <select
+                    value={formData.roleId}
+                    onChange={(e) => field('roleId', e.target.value)}
+                    required
+                    style={{ ...INPUT_STYLE, cursor: 'pointer', borderColor: formErrors.roleId ? '#c0392b' : '#1c1e2a' }}
+                  >
+                    <option value="">Select role…</option>
+                    {roles
+                      .filter((r) => r.name !== 'Player')
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                </FormField>
+              </div>
+            )}
 
             {formError && (
               <div

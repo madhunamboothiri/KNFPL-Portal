@@ -73,3 +73,17 @@ body {
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
+
+/* Field-level error message (inline) */
+.field-error {
+  font-size: 9px;
+  color: #c0392b;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Apply to inputs/selects/textareas to show red outline on error */
+.error-border {
+  border-color: #c0392b !important;
+}

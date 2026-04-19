@@ -4,6 +4,7 @@ interface Props {
   value: string // YYYY-MM-DD or ''
   onChange: (isoValue: string) => void
   style?: React.CSSProperties
+  className?: string
   placeholder?: string
 }
 
@@ -27,7 +28,7 @@ function applyMask(raw: string): string {
   return out
 }
 
-export default function DobMaskInput({ value, onChange, style, placeholder = 'DD/MM/YYYY' }: Props) {
+export default function DobMaskInput({ value, onChange, style, className, placeholder = 'DD/MM/YYYY' }: Props) {
   const [display, setDisplay] = useState(() => toDisplay(value))
   const dateRef = useRef<HTMLInputElement>(null)
 
@@ -61,6 +62,7 @@ export default function DobMaskInput({ value, onChange, style, placeholder = 'DD
         onChange={handleTextChange}
         placeholder={placeholder}
         maxLength={10}
+        className={className}
         style={{ ...style, paddingRight: 34 }}
       />
 

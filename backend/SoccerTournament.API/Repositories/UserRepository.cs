@@ -13,9 +13,10 @@ public class UserRepository : IUserRepository
     private const string SelectColumns = """
         SELECT u.id, u.name, u.email, u.password_hash AS PasswordHash,
                u.role_id AS RoleId, r.name AS RoleName,
-               u.phone_number AS PhoneNumber, u.address,
-               u.date_of_birth AS DateOfBirth, u.profile_image AS ProfileImage,
-               u.created_at AS CreatedAt
+             u.phone_number AS PhoneNumber, u.address,
+             u.date_of_birth AS DateOfBirth, u.profile_image AS ProfileImage,
+             u.never_logged AS NeverLogged,
+             u.created_at AS CreatedAt
         FROM users u
         JOIN roles r ON r.id = u.role_id
         """;
@@ -52,14 +53,15 @@ public class UserRepository : IUserRepository
     {
         const string sql = """
             INSERT INTO users (id, name, email, password_hash, role_id,
-                               phone_number, address, date_of_birth, profile_image, created_at)
+                               phone_number, address, date_of_birth, profile_image, never_logged, created_at)
             VALUES (@Id, @Name, @Email, @PasswordHash, @RoleId,
-                    @PhoneNumber, @Address, @DateOfBirth, @ProfileImage, @CreatedAt)
+                    @PhoneNumber, @Address, @DateOfBirth, @ProfileImage, @NeverLogged, @CreatedAt)
             RETURNING id
             """;
 
         user.Id = Guid.NewGuid();
         user.CreatedAt = DateTime.UtcNow;
+        user.NeverLogged = true;
 
         using var conn = _db.CreateConnection();
         return await conn.ExecuteScalarAsync<Guid>(sql, user);

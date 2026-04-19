@@ -11,6 +11,7 @@ public class User
     public string? PhoneNumber { get; set; }
     public string? Address { get; set; }
     public DateTime? DateOfBirth { get; set; }
+    public bool NeverLogged { get; set; }
     public byte[]? ProfileImage { get; set; }
     public DateTime CreatedAt { get; set; }
 }

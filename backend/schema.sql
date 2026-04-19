@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS users (
     email         VARCHAR(150) NOT NULL UNIQUE,
     password_hash TEXT         NOT NULL,
     role_id       UUID         NOT NULL REFERENCES roles(id),
+    phone_number  VARCHAR(20),
+    address       TEXT,
+    date_of_birth DATE,
+    profile_image BYTEA,
+    never_logged  BOOLEAN     NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 

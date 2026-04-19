@@ -92,9 +92,7 @@ function SaveBtn({ loading, label, icon, noProgress = false, formId }: { loading
 
 function InlineError({ msg }: { msg: string }) {
   return (
-    <div style={{ fontSize: 9, color: '#c0392b', fontFamily: FONT, letterSpacing: 0.5, marginTop: 4, lineHeight: 1.4 }}>
-      {msg}
-    </div>
+    <div className="field-error">{msg}</div>
   )
 }
 
@@ -116,7 +114,8 @@ function PasswordInput({ value, onChange, show, onToggle, hasError = false }: {
         type={show ? 'text' : 'password'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ ...INPUT, paddingRight: 38, borderColor: hasError ? '#c0392b' : '#1c1e2a' }}
+        style={{ ...INPUT, paddingRight: 38 }}
+        className={hasError ? 'error-border' : ''}
       />
       <button type="button" onClick={onToggle} style={{
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
@@ -373,7 +372,8 @@ export default function ProfilePage() {
                   <input
                     type="text" value={name}
                     onChange={(e) => { setName(e.target.value); clearError('name') }}
-                    style={{ ...INPUT, borderColor: errors.name ? '#c0392b' : '#1c1e2a' }}
+                    style={INPUT}
+                    className={errors.name ? 'error-border' : ''}
                   />
                 </FieldWrap>
 
@@ -395,7 +395,8 @@ export default function ProfilePage() {
                       const val = e.target.value.replace(/\D/g, '').slice(0, 10)
                       setPhone(val); clearError('phone')
                     }}
-                    style={{ ...INPUT, borderColor: errors.phone ? '#c0392b' : '#1c1e2a' }}
+                    style={INPUT}
+                    className={errors.phone ? 'error-border' : ''}
                     placeholder="10-digit number"
                   />
                 </FieldWrap>
@@ -405,7 +406,8 @@ export default function ProfilePage() {
                   <DobMaskInput
                     value={dob}
                     onChange={(v) => { setDob(v); clearError('dob') }}
-                    style={{ ...INPUT, borderColor: errors.dob ? '#c0392b' : '#1c1e2a' }}
+                    style={INPUT}
+                    className={errors.dob ? 'error-border' : ''}
                   />
                 </FieldWrap>
               </div>
@@ -415,7 +417,8 @@ export default function ProfilePage() {
                 <textarea
                   value={address} rows={2}
                   onChange={(e) => { setAddress(e.target.value); clearError('address') }}
-                  style={{ ...INPUT, resize: 'none', borderColor: errors.address ? '#c0392b' : '#1c1e2a' }}
+                  style={{ ...INPUT, resize: 'none' }}
+                  className={errors.address ? 'error-border' : ''}
                 />
               </FieldWrap>
 
